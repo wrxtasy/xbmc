@@ -1408,11 +1408,11 @@ int set_header_info(am_private_t *para)
 
 /*************************************************************************/
 CAMLCodec::CAMLCodec()
-  : m_prefill_state(PREFILL_STATE_FILLING)
-  , m_opened(false)
+  : m_opened(false)
   , m_ptsIs64us(false)
-  , m_last_pts(0)
   , m_cur_pts(0)
+  , m_last_pts(0)
+  , m_prefill_state(PREFILL_STATE_FILLING)
 {
   am_private = new am_private_t;
   memset(am_private, 0, sizeof(am_private_t));
@@ -1887,7 +1887,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
     if (m_prefill_state == PREFILL_STATE_FILLING && timesize >= 1.0)
       m_prefill_state = PREFILL_STATE_FILLED;
     else if (m_prefill_state == PREFILL_STATE_FILLING)
-      Sleep(1);
+      usleep(1000);
   }
 
   int rtn(0);
@@ -1898,20 +1898,22 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
     m_last_pts = m_cur_pts;
     m_cur_pts = decode_pts;
   }
-  if (((rtn & VC_PICTURE)==0 && timesize < 2.0) || timesize < 1.0)
+  if (((rtn & VC_PICTURE) == 0 && timesize < 2.0) || timesize < 1.0)
    rtn |= VC_BUFFER;
 
-  vframe_states_t vfs;
-  int fd(open("/dev/amvideo", RD_ONLY);
-  if(fd)
-  {
-    ioctl(fd, AMSTREAM_IOC_VF_STATUS, &vfs);
-    close(fd);
-  }
-  else
-    memset(&vfs, 0, sizeof(vfs));
-
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+  {
+    vframe_states_t vfs;
+    int fd(open("/dev/amvideo", O_RDONLY));
+    if(fd)
+    {
+      if (ioctl(fd, AMSTREAM_IOC_VF_STATUS, &vfs) != 0)
+        memset(&vfs, 0, sizeof(vfs));
+      close(fd);
+    }
+    else
+      memset(&vfs, 0, sizeof(vfs));
+
     CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d dts_in: %0.6f, pts_in: %0.6f, ptsOut:%0.6f, amlpts:%d vfs:[%d-%d-%d-%d] timesize:%0.2f",
       rtn,
       static_cast<float>(dts)/DVD_TIME_BASE,
@@ -1921,6 +1923,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       vfs.vf_pool_size, vfs.buf_free_num,vfs.buf_recycle_num,vfs.buf_avail_num,
       timesize
     );
+  }
 
   return rtn;
 }
@@ -1983,6 +1986,9 @@ bool CAMLCodec::GetPicture(DVDVideoPicture *pDvdVideoPicture)
 
 void CAMLCodec::SetSpeed(int speed)
 {
+  if (m_speed == speed)
+    return;
+
   CLog::Log(LOGDEBUG, "CAMLCodec::SetSpeed, speed(%d)", speed);
 
   // update internal vars regardless
