@@ -192,6 +192,20 @@ void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   CDVDAmlogicInfo *amli = static_cast<CDVDAmlogicInfo *>(m_buffers[m_iRenderBuffer].hwDec);
   CAMLCodec *amlcodec = amli ? amli->getAmlCodec() : 0;
 
+#if 1
+  if(amlcodec)
+  {
+    int pts = amli->GetOmxPts();
+    if (pts != m_prevVPts)
+    {
+      CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d", pts);
+      amlcodec->ReleaseFrame(pts);
+      amlcodec->SetVideoRect(m_sourceRect, m_destRect);
+      m_prevVPts = pts;
+    }
+    amlcodec->PollFrame();
+  }
+#else
   int videopts(0);
   if(amlcodec)
   {
@@ -236,6 +250,7 @@ void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     if(amlcodec)
       amlcodec->SetVideoRect(m_sourceRect, m_destRect);
   }
+#endif
 }
 
 #endif
