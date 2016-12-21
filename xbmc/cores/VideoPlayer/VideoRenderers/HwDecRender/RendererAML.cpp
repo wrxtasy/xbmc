@@ -30,36 +30,10 @@
 #include "cores/VideoPlayer/VideoRenderers/RenderCapture.h"
 #include "settings/AdvancedSettings.h"
 
-static int get_pts(const char *strPath)
-{
-  int fd = open(strPath, O_RDONLY);
-  if (fd >= 0)
-  {
-    char pts_str[64];
-    int size = read(fd, pts_str, sizeof(pts_str));
-    close(fd);
-    return strtol(pts_str, NULL, 16);
-  }
-  return 0;
-}
-
-static void set_pts(const char *strPath, int pts)
-{
-  int fd = open(strPath, O_WRONLY);
-  if (fd >= 0)
-  {
-    char pts_str[64];
-    sprintf(pts_str, "0x%x", pts);
-    write(fd, pts_str, strlen(pts_str));
-    close(fd);
-  }
-}
-
 CRendererAML::CRendererAML()
  : m_prevVPts(-1)
  , m_bConfigured(false)
  , m_iRenderBuffer(0)
- , m_diff_counter(0)
 {
 }
 
@@ -182,7 +156,6 @@ EINTERLACEMETHOD CRendererAML::AutoInterlaceMethod()
 void CRendererAML::Reset()
 {
   m_prevVPts = -1;
-  m_diff_counter = 0;
 }
 
 void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
@@ -192,65 +165,19 @@ void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   CDVDAmlogicInfo *amli = static_cast<CDVDAmlogicInfo *>(m_buffers[m_iRenderBuffer].hwDec);
   CAMLCodec *amlcodec = amli ? amli->getAmlCodec() : 0;
 
-#if 1
   if(amlcodec)
   {
     int pts = amli->GetOmxPts();
     if (pts != m_prevVPts)
     {
-      CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d", pts);
+      if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+        CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d", pts);
       amlcodec->ReleaseFrame(pts);
       amlcodec->SetVideoRect(m_sourceRect, m_destRect);
       m_prevVPts = pts;
     }
     amlcodec->PollFrame();
   }
-#else
-  int videopts(0);
-  if(amlcodec)
-  {
-    unsigned int i(0);
-    do {
-      amlcodec->PollFrame();
-      videopts = get_pts("/sys/class/tsync/pts_video");
-    } while (i++ < 5 && videopts == m_prevVPts);
-  }
-  m_prevVPts = videopts;
-
-  if (amli)
-  {
-    int pts = amli->GetOmxPts();
-
-    int pcrscr(get_pts("/sys/class/tsync/pts_pcrscr"));
-    int diff(static_cast<int>((pcrscr - pts)*1.1 / amli->GetAmlDuration()));
-    m_diff_counter += diff;
-
-    if(!diff)
-    {
-      if (m_diff_counter > 0)
-        --m_diff_counter;
-      else if (m_diff_counter < 0)
-        ++m_diff_counter;
-    }
-
-    if (abs(m_diff_counter) > 5)
-    {
-      set_pts("/sys/class/tsync/pts_pcrscr", pts);
-      CLog::Log(LOGDEBUG, "RenderUpdate: Adjusting: ptsclock:%d ptsscr:%d vpts:%d dur:%d diff:%d diffsum:%d", pts, pcrscr, videopts,amli->GetAmlDuration(), diff, m_diff_counter);
-      pcrscr = pts;
-      m_diff_counter = 0;
-    }
-    else if (g_advancedSettings.CanLogComponent(LOGVIDEO))
-    {
-      CLog::Log(LOGDEBUG, "RenderUpdate: ptsclock:%d ptsscr:%d vpts:%d diff:%d", pts, pcrscr, videopts, m_diff_counter);
-    }
-
-    SysfsUtils::SetInt("/sys/module/amvideo/parameters/omx_pts", pcrscr);
-
-    if(amlcodec)
-      amlcodec->SetVideoRect(m_sourceRect, m_destRect);
-  }
-#endif
 }
 
 #endif

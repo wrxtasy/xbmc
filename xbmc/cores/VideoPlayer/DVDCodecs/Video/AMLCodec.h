@@ -70,7 +70,6 @@ private:
   void          CloseAmlVideo();
   std::string   GetVfmMap(const std::string &name);
   void          SetVfmMap(const std::string &name, const std::string &map);
-  unsigned int  GetDecodedFrameCount();
   int           DequeueBuffer(int64_t &pts);
 
   DllLibAmCodec   *m_dll;

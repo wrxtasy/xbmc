@@ -54,6 +54,8 @@ extern "C" {
 #include <amcodec/codec.h>
 }  // extern "C"
 
+CEvent g_aml_sync_event;
+
 class PosixFile
 {
 public:
@@ -1720,15 +1722,6 @@ void CAMLCodec::SetVfmMap(const std::string &name, const std::string &map)
   SysfsUtils::SetString("/sys/class/vfm/map", "add " + name + " " + map);
 }
 
-unsigned int CAMLCodec::GetDecodedFrameCount()
-{
-  vframe_states_t vfs;
-  if(m_amlVideoFile->IOControl(AMSTREAM_IOC_VF_STATUS, &vfs) == 0)
-    return vfs.buf_avail_num;
-  else
-    return 0;
-}
-
 void CAMLCodec::CloseDecoder()
 {
   CLog::Log(LOGDEBUG, "CAMLCodec::CloseDecoder");
@@ -1897,11 +1890,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
-    vframe_states_t vfs;
-    if (ioctl(am_private->vcodec.handle, AMSTREAM_IOC_VF_STATUS, &vfs) != 0)
-      memset(&vfs, 0, sizeof(vfs));
-
-    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.6f[%llX], pts_in: %0.6f[%llX], adj:%llu, ptsOut:%0.6f, amlpts:%d vfs:[0x%x-0x%x-0x%x-0x%x] timesize:%0.2f",
+    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.6f[%llX], pts_in: %0.6f[%llX], adj:%llu, ptsOut:%0.6f, amlpts:%d timesize:%0.2f",
       rtn,
       static_cast<unsigned int>(iSize),
       static_cast<float>(dts)/DVD_TIME_BASE, am_private->am_pkt.avdts,
@@ -1909,7 +1898,6 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       m_start_adj,
       static_cast<float>(m_cur_pts)/PTS_FREQ,
       static_cast<int>(m_cur_pts),
-      vfs.vf_pool_size, vfs.buf_free_num,vfs.buf_recycle_num,vfs.buf_avail_num,
       timesize
     );
   }
@@ -1919,16 +1907,21 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
 int CAMLCodec::PollFrame()
 {
-   struct pollfd codec_poll_fd[1];
+  struct pollfd codec_poll_fd[1];
 
-    if (am_private->vcodec.handle <= 0) {
-        return 0;
-    }
+  if (am_private->vcodec.handle <= 0) {
+    return 0;
+  }
 
-    codec_poll_fd[0].fd = am_private->vcodec.handle;
-    codec_poll_fd[0].events = POLLOUT;
+  codec_poll_fd[0].fd = am_private->vcodec.handle;
+  codec_poll_fd[0].events = POLLOUT;
 
-    return poll(codec_poll_fd, 1, 100);
+  if (poll(codec_poll_fd, 1, 100) == 0)
+  {
+    g_aml_sync_event.Set();
+    return 0;
+  }
+  return false;
 }
 
 int CAMLCodec::ReleaseFrame(unsigned long pts)
@@ -1996,8 +1989,6 @@ bool CAMLCodec::GetPicture(DVDVideoPicture *pDvdVideoPicture)
 
   pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
   pDvdVideoPicture->pts = (double)m_cur_pts / PTS_FREQ * DVD_TIME_BASE;
-
-  CLog::Log(LOGERROR, "CAMLCodec::GetPicture pts: %lld", m_cur_pts);
 
   return true;
 }

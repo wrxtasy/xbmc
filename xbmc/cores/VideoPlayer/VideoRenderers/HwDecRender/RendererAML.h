@@ -72,7 +72,6 @@ private:
 
   int m_prevVPts;
   bool m_bConfigured;
-  int m_diff_counter;
 };
 
 #endif
