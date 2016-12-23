@@ -1377,6 +1377,7 @@ CAMLCodec::CAMLCodec()
   , m_ptsIs64us(false)
   , m_cur_pts(INT64_0)
   , m_last_pts(0)
+  , m_bufferIndex(-1)
   , m_state(0)
 {
   am_private = new am_private_t;
@@ -1875,13 +1876,8 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
   }
 
   int rtn(0);
-  int64_t decode_pts = 0;
-  if ((m_state & STATE_PREFILLED) != 0 && timesize > 0.5 &&  DequeueBuffer(decode_pts) == 0)
-  {
+  if ((m_state & STATE_PREFILLED) != 0 && timesize > 0.5 &&  DequeueBuffer() == 0)
     rtn |= VC_PICTURE;
-    m_last_pts = m_cur_pts;
-    m_cur_pts = decode_pts;
-  }
   else //Timesize actualizes each 10ms, throttle decode calls to avoid reading too much
     usleep(2500);
 
@@ -1890,7 +1886,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
-    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.6f[%llX], pts_in: %0.6f[%llX], adj:%llu, ptsOut:%0.6f, amlpts:%d timesize:%0.2f",
+    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.6f[%llX], pts_in: %0.6f[%llX], adj:%llu, ptsOut:%0.6f, amlpts:%d, idx:%u, timesize:%0.2f",
       rtn,
       static_cast<unsigned int>(iSize),
       static_cast<float>(dts)/DVD_TIME_BASE, am_private->am_pkt.avdts,
@@ -1898,6 +1894,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       m_start_adj,
       static_cast<float>(m_cur_pts)/PTS_FREQ,
       static_cast<int>(m_cur_pts),
+      m_bufferIndex,
       timesize
     );
   }
@@ -1909,43 +1906,36 @@ int CAMLCodec::PollFrame()
 {
   struct pollfd codec_poll_fd[1];
 
-  if (am_private->vcodec.handle <= 0) {
+  if (am_private->vcodec.cntl_handle <= 0) {
     return 0;
   }
 
-  codec_poll_fd[0].fd = am_private->vcodec.handle;
+  codec_poll_fd[0].fd = am_private->vcodec.cntl_handle;
   codec_poll_fd[0].events = POLLOUT;
 
-  if (poll(codec_poll_fd, 1, 100) == 0)
+  if (poll(codec_poll_fd, 1, 100) > 0)
   {
     g_aml_sync_event.Set();
     return 0;
   }
+
   return false;
 }
 
-int CAMLCodec::ReleaseFrame(unsigned long pts)
+int CAMLCodec::ReleaseFrame(const uint32_t index)
 {
   int ret;
   v4l2_buffer vbuf = { 0 };
   vbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   vbuf.memory = V4L2_MEMORY_USERPTR;
-
-  if (m_ptsIs64us)
-  {
-    uint64_t us = (static_cast<uint64_t>(pts) * DVD_TIME_BASE) / PTS_FREQ;
-    vbuf.timestamp.tv_sec = us >> 32;
-    vbuf.timestamp.tv_usec = us & 0xFFFFFFFF;
-  }
-  else
-    vbuf.timestamp.tv_usec = pts;
+  vbuf.index = index;
 
   if ((ret = m_amlVideoFile->IOControl(VIDIOC_QBUF, &vbuf)) < 0)
     CLog::Log(LOGERROR, "CAMLCodec::ReleaseFrame - VIDIOC_QBUF failed: %s", strerror(errno));
   return ret;
 }
 
-int CAMLCodec::DequeueBuffer(int64_t &pts)
+int CAMLCodec::DequeueBuffer()
 {
   v4l2_buffer vbuf = { 0 };
   vbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -1960,17 +1950,20 @@ int CAMLCodec::DequeueBuffer(int64_t &pts)
   // Since kernel 3.14 Amlogic changed length and units of PTS values reported here.
   // To differentiate such PTS values we check for existence of omx_pts_interval_lower
   // parameter, because it was introduced since kernel 3.14.
+  m_last_pts = m_cur_pts;
+
   if (m_ptsIs64us)
   {
-    pts = vbuf.timestamp.tv_sec & 0xFFFFFFFF;
-    pts <<= 32;
-    pts += vbuf.timestamp.tv_usec & 0xFFFFFFFF;
-    pts = (pts * PTS_FREQ) / DVD_TIME_BASE;
+    m_cur_pts = vbuf.timestamp.tv_sec & 0xFFFFFFFF;
+    m_cur_pts <<= 32;
+    m_cur_pts += vbuf.timestamp.tv_usec & 0xFFFFFFFF;
+    m_cur_pts = (m_cur_pts * PTS_FREQ) / DVD_TIME_BASE;
   }
   else
   {
-    pts = vbuf.timestamp.tv_usec;
+    m_cur_pts = vbuf.timestamp.tv_usec;
   }
+  m_bufferIndex = vbuf.index;
   return 0;
 }
 

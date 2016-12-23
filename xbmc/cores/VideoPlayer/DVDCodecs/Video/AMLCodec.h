@@ -52,11 +52,12 @@ public:
   void          SetVideoRate(int videoRate);
   int64_t       GetCurPts() const { return m_cur_pts + m_start_adj; }
   int           GetOMXPts() const { return static_cast<int>(m_cur_pts); }
+  uint32_t      GetBufferIndex() const { return m_bufferIndex; };
   static float  OMXPtsToSeconds(int omxpts);
   static int    OMXDurationToNs(int duration);
   int           GetAmlDuration() const;
   int           PollFrame();
-  int           ReleaseFrame(unsigned long pts);
+  int           ReleaseFrame(const uint32_t index);
 
 private:
   void          ShowMainVideo(const bool show);
@@ -70,7 +71,7 @@ private:
   void          CloseAmlVideo();
   std::string   GetVfmMap(const std::string &name);
   void          SetVfmMap(const std::string &name, const std::string &map);
-  int           DequeueBuffer(int64_t &pts);
+  int           DequeueBuffer();
 
   DllLibAmCodec   *m_dll;
   bool             m_opened;
@@ -79,9 +80,10 @@ private:
   CDVDStreamInfo   m_hints;
   int              m_speed;
   int64_t          m_cur_pts;
-  volatile int64_t m_vbufsize;
+  int64_t          m_vbufsize;
   int64_t          m_start_adj;
   int64_t          m_last_pts;
+  uint32_t         m_bufferIndex;
 
   CRect            m_dst_rect;
   CRect            m_display_rect;

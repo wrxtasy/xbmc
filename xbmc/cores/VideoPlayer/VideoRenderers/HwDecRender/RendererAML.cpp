@@ -171,8 +171,8 @@ void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     if (pts != m_prevVPts)
     {
       if (g_advancedSettings.CanLogComponent(LOGVIDEO))
-        CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d", pts);
-      amlcodec->ReleaseFrame(pts);
+        CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d, idx:%u", pts, amli->GetBufferIndex());
+      amlcodec->ReleaseFrame(amli->GetBufferIndex());
       amlcodec->SetVideoRect(m_sourceRect, m_destRect);
       m_prevVPts = pts;
     }
