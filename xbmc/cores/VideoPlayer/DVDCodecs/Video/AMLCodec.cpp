@@ -31,6 +31,7 @@
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "threads/Atomics.h"
 #include "utils/AMLUtils.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -1663,6 +1664,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   // vcodec is open, update speed if it was
   // changed before VideoPlayer called OpenDecoder.
   SetSpeed(m_speed);
+  SetPollDevice(am_private->vcodec.cntl_handle);
 
   return true;
 }
@@ -1683,15 +1685,6 @@ bool CAMLCodec::OpenAmlVideo(const CDVDStreamInfo &hints)
 
   SysfsUtils::SetInt("/sys/module/amlvideodri/parameters/freerun_mode", 3);
 
-  struct v4l2_requestbuffers rbuf = {0};
-  rbuf.count = 1;
-  rbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  rbuf.memory = V4L2_MEMORY_USERPTR;
-  if (m_amlVideoFile->IOControl(VIDIOC_REQBUFS, &rbuf) < 0)
-  {
-    if (errno != EAGAIN)
-      CLog::Log(LOGERROR, "CAMLCodec::OpenAML - VIDIOC_REQBUFS failed: %s", strerror(errno));
-  }
   return true;
 }
 
@@ -1727,6 +1720,8 @@ void CAMLCodec::CloseDecoder()
 {
   CLog::Log(LOGDEBUG, "CAMLCodec::CloseDecoder");
 
+  SetPollDevice(-1);
+
   // never leave vcodec ff/rw or paused.
   if (m_speed != DVD_PLAYSPEED_NORMAL)
   {
@@ -1761,6 +1756,8 @@ void CAMLCodec::Reset()
   if (!m_opened)
     return;
 
+  SetPollDevice(-1);
+
   // set the system blackout_policy to leave the last frame showing
   int blackout_policy;
   SysfsUtils::GetInt("/sys/class/video/blackout_policy", blackout_policy);
@@ -1794,6 +1791,8 @@ void CAMLCodec::Reset()
   m_state = 0;
   m_start_adj = 0;
   SetSpeed(m_speed);
+
+  SetPollDevice(am_private->vcodec.cntl_handle);
 }
 
 int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
@@ -1902,33 +1901,47 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
   return rtn;
 }
 
+long CAMLCodec::m_pollSync = 0;
+int CAMLCodec::m_pollDevice;
+
 int CAMLCodec::PollFrame()
 {
-  struct pollfd codec_poll_fd[1];
-
-  if (am_private->vcodec.cntl_handle <= 0) {
+  CAtomicSpinLock lock(m_pollSync);
+  if (m_pollDevice < 0)
     return 0;
-  }
 
-  codec_poll_fd[0].fd = am_private->vcodec.cntl_handle;
+  struct pollfd codec_poll_fd[1];
+  static unsigned int pc(0);
+
+  codec_poll_fd[0].fd = m_pollDevice;
   codec_poll_fd[0].events = POLLOUT;
 
   if (poll(codec_poll_fd, 1, 100) > 0)
   {
     g_aml_sync_event.Set();
-    return 0;
+    return 1;
   }
-
-  return false;
+  return 0;
 }
 
-int CAMLCodec::ReleaseFrame(const uint32_t index)
+void CAMLCodec::SetPollDevice(int dev)
+{
+  CAtomicSpinLock lock(m_pollSync);
+  m_pollDevice = dev;
+}
+
+int CAMLCodec::ReleaseFrame(const uint32_t index, bool drop)
 {
   int ret;
   v4l2_buffer vbuf = { 0 };
   vbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  vbuf.memory = V4L2_MEMORY_USERPTR;
   vbuf.index = index;
+
+  if (drop)
+    vbuf.flags |= V4L2_BUF_FLAG_DONE;
+
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "CAMLCodec::ReleaseFrame idx:%u", index);
 
   if ((ret = m_amlVideoFile->IOControl(VIDIOC_QBUF, &vbuf)) < 0)
     CLog::Log(LOGERROR, "CAMLCodec::ReleaseFrame - VIDIOC_QBUF failed: %s", strerror(errno));

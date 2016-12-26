@@ -47,6 +47,8 @@ public:
   int GetAmlDuration() const { return m_amlDuration; }
   uint32_t GetBufferIndex() const { return m_bufferIndex; };
   void invalidate();
+  void SetRendered() { m_rendered = true; };
+  bool IsRendered() { return m_rendered; };
 
 protected:
   long m_refs;
@@ -56,6 +58,7 @@ protected:
   CAMLCodec* m_amlCodec;
   int m_omxPts, m_amlDuration;
   uint32_t m_bufferIndex;
+  bool m_rendered;
 };
 
 class CDVDVideoCodecAmlogic : public CDVDVideoCodec

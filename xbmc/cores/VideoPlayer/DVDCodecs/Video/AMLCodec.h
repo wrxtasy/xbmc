@@ -24,6 +24,7 @@
 #include "cores/IPlayer.h"
 #include "guilib/Geometry.h"
 #include "rendering/RenderSystem.h"
+#include <deque>
 
 typedef struct am_private_t am_private_t;
 
@@ -56,8 +57,10 @@ public:
   static float  OMXPtsToSeconds(int omxpts);
   static int    OMXDurationToNs(int duration);
   int           GetAmlDuration() const;
-  int           PollFrame();
-  int           ReleaseFrame(const uint32_t index);
+  int           ReleaseFrame(const uint32_t index, bool bDrop = false);
+
+  static int    PollFrame();
+  static void   SetPollDevice(int device);
 
 private:
   void          ShowMainVideo(const bool show);
@@ -102,5 +105,7 @@ private:
 
   PosixFilePtr     m_amlVideoFile;
   std::string      m_defaultVfmMap;
-  CCriticalSection m_ptsQueueMutex;
+
+  static long  m_pollSync;
+  static int   m_pollDevice;
 };

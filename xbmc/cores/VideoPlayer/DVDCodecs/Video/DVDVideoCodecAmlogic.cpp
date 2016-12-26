@@ -631,6 +631,7 @@ CDVDAmlogicInfo::CDVDAmlogicInfo(CDVDVideoCodecAmlogic *codec, CAMLCodec *amlcod
   , m_omxPts(omxPts)
   , m_amlDuration(amlDuration)
   , m_bufferIndex(bufferIndex)
+  , m_rendered(false)
 {
 }
 

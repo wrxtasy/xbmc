@@ -105,7 +105,13 @@ void CRendererAML::ReleaseBuffer(int idx)
   if (buf.hwDec)
   {
     CDVDAmlogicInfo *amli = static_cast<CDVDAmlogicInfo *>(buf.hwDec);
-    SAFE_RELEASE(amli);
+    if (amli)
+    {
+      CAMLCodec *amlcodec;
+      if (!amli->IsRendered() && (amlcodec = amli->getAmlCodec()))
+        amlcodec->ReleaseFrame(amli->GetBufferIndex(), true);
+      SAFE_RELEASE(amli);
+    }
     buf.hwDec = NULL;
   }
 }
@@ -170,14 +176,13 @@ void CRendererAML::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     int pts = amli->GetOmxPts();
     if (pts != m_prevVPts)
     {
-      if (g_advancedSettings.CanLogComponent(LOGVIDEO))
-        CLog::Log(LOGDEBUG, "RenderUpdate: ReleaseFrame with pts:%d, idx:%u", pts, amli->GetBufferIndex());
       amlcodec->ReleaseFrame(amli->GetBufferIndex());
       amlcodec->SetVideoRect(m_sourceRect, m_destRect);
+      amli->SetRendered();
       m_prevVPts = pts;
     }
-    amlcodec->PollFrame();
   }
+  CAMLCodec::PollFrame();
 }
 
 #endif
