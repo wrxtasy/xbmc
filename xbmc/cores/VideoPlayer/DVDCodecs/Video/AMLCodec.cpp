@@ -49,6 +49,8 @@
 #include <sys/utsname.h>
 #include <linux/videodev2.h>
 #include <sys/poll.h>
+#include <chrono>
+#include <thread>
 
 // amcodec include
 extern "C" {
@@ -1885,11 +1887,11 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
-    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.6f[%llX], pts_in: %0.6f[%llX], adj:%llu, ptsOut:%0.6f, amlpts:%d, idx:%u, timesize:%0.2f",
+    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.4lf[%llX], pts_in: %0.4lf[%llX], adj:%llu, ptsOut:%0.4f, amlpts:%d, idx:%u, timesize:%0.2f",
       rtn,
       static_cast<unsigned int>(iSize),
-      static_cast<float>(dts)/DVD_TIME_BASE, am_private->am_pkt.avdts,
-      static_cast<float>(pts)/DVD_TIME_BASE, am_private->am_pkt.avpts,
+      dts / DVD_TIME_BASE, am_private->am_pkt.avdts,
+      pts / DVD_TIME_BASE, am_private->am_pkt.avpts,
       m_start_adj,
       static_cast<float>(m_cur_pts)/PTS_FREQ,
       static_cast<int>(m_cur_pts),
@@ -1953,10 +1955,19 @@ int CAMLCodec::DequeueBuffer()
   v4l2_buffer vbuf = { 0 };
   vbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
+  //Driver change from 10 to 0ms latency, throttle here
+  std::chrono::time_point<std::chrono::system_clock> now(std::chrono::system_clock::now());
+
   if (m_amlVideoFile->IOControl(VIDIOC_DQBUF, &vbuf) < 0)
   {
     if (errno != EAGAIN)
       CLog::Log(LOGERROR, "CAMLCodec::DequeueBuffer - VIDIOC_DQBUF failed: %s", strerror(errno));
+
+    std::chrono::milliseconds elapsed(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - now).count());
+
+    if (elapsed < std::chrono::milliseconds(10))
+      std::this_thread::sleep_for(std::chrono::milliseconds(10) - elapsed);
+
     return -errno;
   }
 
@@ -2051,12 +2062,20 @@ double CAMLCodec::GetTimeSize()
     return 0;
 
   double timesize(0);
+#if 0
+  int video_delay_ms;
+  if (m_dll->codec_get_video_cur_delay_ms(&am_private->vcodec, &video_delay_ms) >= 0)
+    timesize = (float)video_delay_ms / 1000.0;
+  if (timesize < 0 || timesize > 5.0)
+    CLog::Log(LOGWARNING, "CAMLCodec::GetTimeSize limits exceed: %0.4f",timesize);
+#else
   if (m_cur_pts != INT64_0)
   {
     timesize = static_cast<double>(am_private->am_pkt.avdts - m_cur_pts) / PTS_FREQ;
     if (timesize < 0 || timesize > 5.0)
      CLog::Log(LOGWARNING, "CAMLCodec::GetTimeSize limits exceed: avdts: %lld  cur_pts: %lld",am_private->am_pkt.avdts, m_cur_pts);
   }
+#endif
 
   // lie to VideoPlayer, it is hardcoded to a max of 8 seconds,
   // if you buffer more than 8 seconds, it goes nuts.
