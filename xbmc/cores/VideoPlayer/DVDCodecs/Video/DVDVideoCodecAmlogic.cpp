@@ -396,22 +396,6 @@ void CDVDVideoCodecAmlogic::SetSpeed(int iSpeed)
     m_Codec->SetSpeed(iSpeed);
 }
 
-int CDVDVideoCodecAmlogic::GetDataSize(void)
-{
-  if (m_Codec)
-    return m_Codec->GetDataSize();
-
-  return 0;
-}
-
-double CDVDVideoCodecAmlogic::GetTimeSize(void)
-{
-  if (m_Codec)
-    return m_Codec->GetTimeSize();
-
-  return 0.0;
-}
-
 void CDVDVideoCodecAmlogic::FrameQueuePop(void)
 {
   if (!m_frame_queue || m_queue_depth == 0)

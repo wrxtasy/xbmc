@@ -47,8 +47,6 @@ public:
 
   bool          GetPicture(DVDVideoPicture* pDvdVideoPicture);
   void          SetSpeed(int speed);
-  int           GetDataSize();
-  double        GetTimeSize();
   void          SetVideoRect(const CRect &SrcRect, const CRect &DestRect);
   void          SetVideoRate(int videoRate);
   int64_t       GetCurPts() const { return m_cur_pts + m_start_adj; }
@@ -83,7 +81,7 @@ private:
   CDVDStreamInfo   m_hints;
   int              m_speed;
   int64_t          m_cur_pts;
-  int64_t          m_vbufsize;
+  uint32_t         m_max_frame_size;
   int64_t          m_start_adj;
   int64_t          m_last_pts;
   uint32_t         m_bufferIndex;
