@@ -1880,8 +1880,8 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       Reset();
     }
 
-    if (iSize > m_max_frame_size)
-      m_max_frame_size = iSize;
+    if (iSize*2 > m_max_frame_size)
+      m_max_frame_size = iSize*2;
   }
 
   if (DequeueBuffer() == 0)
