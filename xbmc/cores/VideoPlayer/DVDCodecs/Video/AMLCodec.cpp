@@ -1382,6 +1382,7 @@ CAMLCodec::CAMLCodec()
   , m_last_pts(0)
   , m_bufferIndex(-1)
   , m_state(0)
+  , m_frameSizeSum(0)
 {
   am_private = new am_private_t;
   memset(am_private, 0, sizeof(am_private_t));
@@ -1434,10 +1435,11 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   m_zoom = -1;
   m_contrast = -1;
   m_brightness = -1;
-  m_max_frame_size = 0;
   m_start_adj = 0;
   m_hints = hints;
   m_state = 0;
+  m_frameSizes.clear();
+  m_frameSizeSum = 0;
 
   if (!OpenAmlVideo(hints))
   {
@@ -1792,7 +1794,9 @@ void CAMLCodec::Reset()
   m_cur_pts = INT64_0;
   m_state = 0;
   m_start_adj = 0;
-  m_max_frame_size = 0;
+  m_frameSizes.clear();
+  m_frameSizeSum = 0;
+
   SetSpeed(m_speed);
 
   SetPollDevice(am_private->vcodec.cntl_handle);
@@ -1805,16 +1809,12 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   int rtn(0);
 
-  struct buf_status bs;
-  m_dll->codec_get_vbuf_state(&am_private->vcodec, &bs);
-  if (!m_max_frame_size || bs.data_len < m_max_frame_size)
-    rtn = VC_BUFFER;
-
-  //CLog::Log(LOGDEBUG, "CAMLCodec::Decode: buf status: s:%d dl:%d fl:%d rp:%u wp:%u",bs.size, bs.data_len, bs.free_len, bs.read_pointer, bs.write_pointer);
-
-
+  float timesize(GetTimeSize());
   if (pData)
   {
+    m_frameSizes.push_back(iSize);
+    m_frameSizeSum += iSize;
+
     am_private->am_pkt.data = pData;
     am_private->am_pkt.data_size = iSize;
 
@@ -1875,21 +1875,23 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       loop++;
     }
     if (loop == 100)
-    {
       // Decoder got stuck; Reset
       Reset();
-    }
 
-    if (iSize*2 > m_max_frame_size)
-      m_max_frame_size = iSize*2;
+    if ((m_state & STATE_PREFILLED) == 0 && timesize >= 1.0)
+       m_state |= STATE_PREFILLED;
   }
 
-  if (DequeueBuffer() == 0)
+  if ((m_state & STATE_PREFILLED) != 0 && timesize > 0.5 &&  DequeueBuffer() == 0)
     rtn |= VC_PICTURE;
+
+  if (((rtn & VC_PICTURE) == 0 && timesize < 2.0) || timesize < 1.0)
+    rtn |= VC_BUFFER;
+
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
-    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.4lf[%llX], pts_in: %0.4lf[%llX], adj:%llu, ptsOut:%0.4f, amlpts:%d, idx:%u",
+    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.4lf[%llX], pts_in: %0.4lf[%llX], adj:%llu, ptsOut:%0.4f, amlpts:%d, idx:%u, timesize:%0.4f",
       rtn,
       static_cast<unsigned int>(iSize),
       dts / DVD_TIME_BASE, am_private->am_pkt.avdts,
@@ -1897,7 +1899,8 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       m_start_adj,
       static_cast<float>(m_cur_pts)/PTS_FREQ,
       static_cast<int>(m_cur_pts),
-      m_bufferIndex
+      m_bufferIndex,
+      timesize
     );
   }
 
@@ -1990,6 +1993,23 @@ int CAMLCodec::DequeueBuffer()
   }
   m_bufferIndex = vbuf.index;
   return 0;
+}
+
+float CAMLCodec::GetTimeSize()
+{
+  struct buf_status bs;
+  m_dll->codec_get_vbuf_state(&am_private->vcodec, &bs);
+
+  //CLog::Log(LOGDEBUG, "CAMLCodec::Decode: buf status: s:%d dl:%d fl:%d rp:%u wp:%u",bs.size, bs.data_len, bs.free_len, bs.read_pointer, bs.write_pointer);  
+  while (m_frameSizeSum >  bs.data_len)
+  {
+    m_frameSizeSum -= m_frameSizes.front();
+    m_frameSizes.pop_front();
+  }
+  if (bs.free_len < (bs.data_len >> 1))
+    return 7.0;
+
+  return (float)(m_frameSizes.size() * am_private->video_rate) / UNIT_FREQ;
 }
 
 bool CAMLCodec::GetPicture(DVDVideoPicture *pDvdVideoPicture)

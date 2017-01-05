@@ -73,6 +73,7 @@ private:
   std::string   GetVfmMap(const std::string &name);
   void          SetVfmMap(const std::string &name, const std::string &map);
   int           DequeueBuffer();
+  float         GetTimeSize();
 
   DllLibAmCodec   *m_dll;
   bool             m_opened;
@@ -103,6 +104,9 @@ private:
 
   PosixFilePtr     m_amlVideoFile;
   std::string      m_defaultVfmMap;
+
+  std::deque<uint32_t> m_frameSizes;
+  std::uint32_t m_frameSizeSum;
 
   static long  m_pollSync;
   static int   m_pollDevice;
