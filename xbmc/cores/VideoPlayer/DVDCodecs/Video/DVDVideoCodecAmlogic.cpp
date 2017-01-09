@@ -44,17 +44,17 @@ typedef struct frame_queue {
 CDVDVideoCodecAmlogic::CDVDVideoCodecAmlogic(CProcessInfo &processInfo) : CDVDVideoCodec(processInfo),
   m_Codec(NULL),
   m_pFormatName("amcodec"),
+  m_opened(false),
   m_last_pts(0.0),
   m_frame_queue(NULL),
   m_queue_depth(0),
   m_framerate(0.0),
   m_video_rate(0),
   m_mpeg2_sequence(NULL),
-  m_bitparser(NULL),
-  m_bitstream(NULL),
-  m_opened(false),
   m_drop(false),
-  m_has_keyframe(false)
+  m_has_keyframe(false),
+  m_bitparser(NULL),
+  m_bitstream(NULL)
 {
   pthread_mutex_init(&m_queue_mutex, NULL);
 }
@@ -153,9 +153,9 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
       // amcodec can't handle h263
       return false;
       break;
-    case AV_CODEC_ID_FLV1:
-      m_pFormatName = "am-flv1";
-      break;
+//    case AV_CODEC_ID_FLV1:
+//      m_pFormatName = "am-flv1";
+//      break;
     case AV_CODEC_ID_RV10:
     case AV_CODEC_ID_RV20:
     case AV_CODEC_ID_RV30:
@@ -288,7 +288,7 @@ int CDVDVideoCodecAmlogic::Decode(uint8_t *pData, int iSize, double dts, double 
 
       if (!m_bitstream->HasKeyframe())
       {
-        CLog::Log(LOGDEBUG, "CDVDVideoCodecAmlogic::Decode waiting for keyframe (bitstream)", __MODULE_NAME__);
+        CLog::Log(LOGDEBUG, "%s::Decode waiting for keyframe (bitstream)", __MODULE_NAME__);
         return VC_BUFFER;
       }
       pData = m_bitstream->GetConvertBuffer();
@@ -298,7 +298,7 @@ int CDVDVideoCodecAmlogic::Decode(uint8_t *pData, int iSize, double dts, double 
     {
       if (!m_bitparser->HasKeyframe(pData, iSize))
       {
-        CLog::Log(LOGDEBUG, "CDVDVideoCodecAmlogic::Decode waiting for keyframe (bitparser)", __MODULE_NAME__);
+        CLog::Log(LOGDEBUG, "%s::Decode waiting for keyframe (bitparser)", __MODULE_NAME__);
         return VC_BUFFER;
       }
       else

@@ -30,6 +30,9 @@
 #include "threads/Thread.h"
 #include <sys/poll.h>
 
+#include <chrono>
+#include <thread>
+
 extern CEvent g_aml_sync_event;
 
 CVideoSyncAML::CVideoSyncAML(CVideoReferenceClock *clock)
@@ -56,12 +59,33 @@ bool CVideoSyncAML::Setup(PUPDATECLOCK func)
 
 void CVideoSyncAML::Run(std::atomic<bool>& stop)
 {
+  // We use the wall clock for timout handling (no AML h/w, startup)
+  std::chrono::time_point<std::chrono::system_clock> now(std::chrono::system_clock::now());
+  unsigned int waittime (3000 / m_fps);
+  uint64_t numVBlanks (0);
+
   while (!stop && !m_abort)
   {
-    g_aml_sync_event.WaitMSec(100);
+    int countVSyncs(1);
+    if( !g_aml_sync_event.WaitMSec(waittime))
+    {
+      std::chrono::milliseconds elapsed(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - now).count());
+      uint64_t curVBlanks = (m_fps * elapsed.count()) / 1000;
+      int64_t lastVBlankTime((curVBlanks * 1000) / m_fps);
+      if (elapsed.count() > lastVBlankTime)
+      {
+        lastVBlankTime = (++curVBlanks * 1000) / m_fps;
+        std::this_thread::sleep_for(std::chrono::milliseconds(lastVBlankTime - elapsed.count()));
+      }
+      countVSyncs = curVBlanks - numVBlanks;
+      numVBlanks = curVBlanks;
+    }
+    else
+      ++numVBlanks;
+
     uint64_t now = CurrentHostCounter();
 
-    UpdateClock(1, now, m_refClock);
+    UpdateClock(countVSyncs, now, m_refClock);
   }
 }
 

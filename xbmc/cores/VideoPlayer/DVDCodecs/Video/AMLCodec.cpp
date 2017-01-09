@@ -1917,7 +1917,6 @@ int CAMLCodec::PollFrame()
     return 0;
 
   struct pollfd codec_poll_fd[1];
-  static unsigned int pc(0);
 
   codec_poll_fd[0].fd = m_pollDevice;
   codec_poll_fd[0].events = POLLOUT;
@@ -2001,7 +2000,7 @@ float CAMLCodec::GetTimeSize()
   m_dll->codec_get_vbuf_state(&am_private->vcodec, &bs);
 
   //CLog::Log(LOGDEBUG, "CAMLCodec::Decode: buf status: s:%d dl:%d fl:%d rp:%u wp:%u",bs.size, bs.data_len, bs.free_len, bs.read_pointer, bs.write_pointer);  
-  while (m_frameSizeSum >  bs.data_len)
+  while (m_frameSizeSum >  (unsigned int)bs.data_len)
   {
     m_frameSizeSum -= m_frameSizes.front();
     m_frameSizes.pop_front();
