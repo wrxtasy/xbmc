@@ -305,13 +305,16 @@ int CDVDVideoCodecAmlogic::Decode(uint8_t *pData, int iSize, double dts, double 
         m_has_keyframe = true;
     }
     FrameRateTracking( pData, iSize, dts, pts);
-  }
 
-  if (!m_opened)
-  {
-    if (m_Codec && !m_Codec->OpenDecoder(m_hints))
-      CLog::Log(LOGERROR, "%s: Failed to open Amlogic Codec", __MODULE_NAME__);
-    m_opened = true;
+    if (!m_opened)
+    {
+      if (pts == DVD_NOPTS_VALUE)
+        m_hints.ptsinvalid = true;
+
+      if (m_Codec && !m_Codec->OpenDecoder(m_hints))
+        CLog::Log(LOGERROR, "%s: Failed to open Amlogic Codec", __MODULE_NAME__);
+      m_opened = true;
+    }
   }
 
   if (m_hints.ptsinvalid)

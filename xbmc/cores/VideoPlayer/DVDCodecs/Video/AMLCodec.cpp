@@ -296,6 +296,7 @@ static const int64_t INT64_0 = 0x8000000000000000ULL;
 
 #define EXTERNAL_PTS    (1)
 #define SYNC_OUTSIDE    (2)
+#define KEYFRAME_PTS_ONLY 0x100
 
 // missing tags
 #ifndef CODEC_TAG_VC_1
@@ -1564,6 +1565,8 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
       break;
     case VFORMAT_MPEG4:
       am_private->gcodec.param = (void*)EXTERNAL_PTS;
+      if (m_hints.ptsinvalid)
+        am_private->gcodec.param = (void*)(EXTERNAL_PTS | KEYFRAME_PTS_ONLY);
       break;
     case VFORMAT_H264:
     case VFORMAT_H264MVC:
@@ -1606,8 +1609,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
     case VFORMAT_VC1:
       // vc1 in an avi file
       if (m_hints.ptsinvalid)
-        am_private->gcodec.param = (void*)(EXTERNAL_PTS | 0x100);
-      am_private->gcodec.param = (void*)0x100;
+        am_private->gcodec.param = (void*)KEYFRAME_PTS_ONLY;
       break;
     case VFORMAT_HEVC:
       am_private->gcodec.format = VIDEO_DEC_FORMAT_HEVC;
@@ -1848,7 +1850,7 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       am_private->am_pkt.avdts -= m_start_adj;
 
       // For VC1 AML decoder uses PTS only on I-Frames
-      if (am_private->am_pkt.avpts == INT64_0 && am_private->video_format == VFORMAT_VC1)
+      if (am_private->am_pkt.avpts == INT64_0 && (((size_t)am_private->gcodec.param) & KEYFRAME_PTS_ONLY))
         am_private->am_pkt.avpts = am_private->am_pkt.avdts;
     }
     // We use this to determine the fill state if no PTS is given
