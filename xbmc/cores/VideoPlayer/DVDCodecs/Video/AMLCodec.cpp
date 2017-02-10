@@ -2207,7 +2207,8 @@ void CAMLCodec::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
     case 1:
     case 3:
       {
-        int diff = (int) ((dst_rect.Height() - dst_rect.Width()) / 2);
+        double scale = (double)dst_rect.Height() / dst_rect.Width();
+        int diff = (int) ((dst_rect.Height()*scale - dst_rect.Width()) / 2);
         dst_rect = CRect(DestRect.x1 - diff, DestRect.y1, DestRect.x2 + diff, DestRect.y2);
       }
 
