@@ -342,6 +342,7 @@ bool CBitstreamParser::HasKeyframe(const uint8_t *buf, int buf_size)
           rtn = true;
         break;
       case AVC_NAL_SPS:
+        rtn = true;
         break;
       case AVC_NAL_PPS:
         break;
@@ -967,7 +968,7 @@ bool CBitstreamConverter::BitstreamConvert(uint8_t* pData, int iSize, uint8_t **
     if (m_sps_pps_context.first_idr && (unit_type == nal_sps || unit_type == nal_pps))
       m_sps_pps_context.idr_sps_pps_seen = 1;
 
-    if (!m_has_keyframe && (IsIDR(unit_type) || (unit_type == nal_sei && has_sei_recovery_point(buf, buf + nal_size))))
+    if (!m_has_keyframe && (unit_type == nal_sps || IsIDR(unit_type) || (unit_type == nal_sei && has_sei_recovery_point(buf, buf + nal_size))))
       m_has_keyframe = true;
 
     // prepend only to the first access unit of an IDR picture, if no sps/pps already present
