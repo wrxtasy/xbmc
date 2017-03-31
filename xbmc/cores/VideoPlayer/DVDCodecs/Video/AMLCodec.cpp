@@ -1431,6 +1431,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
 #endif
 
   m_speed = DVD_PLAYSPEED_NORMAL;
+  m_drain = false;
   m_cur_pts = INT64_0;
   m_dst_rect.SetRect(0, 0, 0, 0);
   m_zoom = -1;
@@ -1441,6 +1442,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   m_state = 0;
   m_frameSizes.clear();
   m_frameSizeSum = 0;
+  m_noPictureLoop = 0;
 
   if (!OpenAmlVideo(hints))
   {
@@ -1804,6 +1806,8 @@ void CAMLCodec::Reset()
   m_start_adj = 0;
   m_frameSizes.clear();
   m_frameSizeSum = 0;
+  m_drain = false;
+  m_noPictureLoop = 0;
 
   SetSpeed(m_speed);
 
@@ -1817,7 +1821,6 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   int rtn(0);
 
-  float timesize(GetTimeSize());
   if (pData)
   {
     m_frameSizes.push_back(iSize);
@@ -1889,21 +1892,34 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
     if (loop == 100)
       // Decoder got stuck; Reset
       Reset();
-
-    if ((m_state & STATE_PREFILLED) == 0 && timesize >= 1.0)
-       m_state |= STATE_PREFILLED;
   }
 
-  if ((m_state & STATE_PREFILLED) != 0 && timesize > 0.5 &&  DequeueBuffer() == 0)
-    rtn |= VC_PICTURE;
+  float timesize(GetTimeSize());
 
-  if (((rtn & VC_PICTURE) == 0 && timesize < 2.0) || timesize < 1.0)
-    rtn |= VC_BUFFER;
+  if (m_drain)
+  {
+    if (DequeueBuffer() == 0)
+    {
+      rtn = VC_PICTURE;
+      m_noPictureLoop = 0;
+    }
+    else if (++m_noPictureLoop == 10 || timesize == 0.0) // EOS
+      rtn = VC_BUFFER;
+  }
+  else
+  {
+    m_noPictureLoop = 0;
 
+    if (timesize > 0.5 && DequeueBuffer() == 0)
+      rtn |= VC_PICTURE;
+
+    if (timesize < 1.0)
+      rtn |= VC_BUFFER;
+  }
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
-    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.4lf[%llX], pts_in: %0.4lf[%llX], adj:%llu, ptsOut:%0.4f, amlpts:%d, idx:%u, timesize:%0.4f",
+    CLog::Log(LOGDEBUG, "CAMLCodec::Decode: ret: %d, sz: %u, dts_in: %0.4lf[%llX], pts_in: %0.4lf[%llX], adj:%llu, ptsOut:%0.4f, amlpts:%d, idx:%u, timesize:%0.4f, drain: %d",
       rtn,
       static_cast<unsigned int>(iSize),
       dts / DVD_TIME_BASE, am_private->am_pkt.avdts,
@@ -1912,7 +1928,8 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
       static_cast<float>(m_cur_pts)/PTS_FREQ,
       static_cast<int>(m_cur_pts),
       m_bufferIndex,
-      timesize
+      timesize,
+      m_drain
     );
   }
 
