@@ -51,7 +51,7 @@ public:
   virtual bool  ShowWindow(bool show);
 
 protected:
-  bool SetDisplayResolution(const char *resolution);
+  bool SetDisplayResolution(const RESOLUTION_INFO &res);
   void SetupVideoScaling(const char *mode);
   void DealWithScale(const RESOLUTION_INFO &res);
   void EnableFreeScale(const RESOLUTION_INFO &res);

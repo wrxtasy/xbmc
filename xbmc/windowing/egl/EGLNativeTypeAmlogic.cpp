@@ -31,6 +31,7 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <EGL/egl.h>
+#include <math.h>
 
 CEGLNativeTypeAmlogic::CEGLNativeTypeAmlogic()
 {
@@ -130,7 +131,15 @@ bool CEGLNativeTypeAmlogic::GetNativeResolution(RESOLUTION_INFO *res) const
 {
   std::string mode;
   SysfsUtils::GetString("/sys/class/display/mode", mode);
-  return aml_mode_to_resolution(mode.c_str(), res);
+
+  bool result = aml_mode_to_resolution(mode.c_str(), res);
+
+  int fractional_rate;
+  SysfsUtils::GetInt("/sys/class/amhdmitx/amhdmitx0/frac_rate_policy", fractional_rate);
+  if (fractional_rate == 1)
+    res->fRefreshRate /= 1.001;
+
+  return result;
 }
 
 bool CEGLNativeTypeAmlogic::SetNativeResolution(const RESOLUTION_INFO &res)
@@ -145,11 +154,11 @@ bool CEGLNativeTypeAmlogic::SetNativeResolution(const RESOLUTION_INFO &res)
 #endif
 
   // Don't set the same mode as current
-  std::string mode;
-  SysfsUtils::GetString("/sys/class/display/mode", mode);
-  
-  if (res.strId != mode)
-    result = SetDisplayResolution(res.strId.c_str());
+  RESOLUTION_INFO current_resolution;
+  GetNativeResolution(&current_resolution);
+  if (current_resolution.strId != res.strId ||
+    current_resolution.fRefreshRate != res.fRefreshRate)
+    result = SetDisplayResolution(res);
 
   DealWithScale(res);
 
@@ -177,6 +186,18 @@ bool CEGLNativeTypeAmlogic::ProbeResolutions(std::vector<RESOLUTION_INFO> &resol
   {
     if(aml_mode_to_resolution(i->c_str(), &res))
       resolutions.push_back(res);
+
+    switch ((int)res.fRefreshRate)
+    {
+      case 24:
+      case 30:
+      case 60:
+        res.fRefreshRate /= 1.001;
+        res.strMode       = StringUtils::Format("%dx%d @ %.2f%s - Full Screen", res.iScreenWidth, res.iScreenHeight, res.fRefreshRate,
+          res.dwFlags & D3DPRESENTFLAG_INTERLACED ? "i" : "");
+        resolutions.push_back(res);
+        break;
+    }
   }
   return resolutions.size() > 0;
 
@@ -201,14 +222,22 @@ bool CEGLNativeTypeAmlogic::ShowWindow(bool show)
   return true;
 }
 
-bool CEGLNativeTypeAmlogic::SetDisplayResolution(const char *resolution)
+bool CEGLNativeTypeAmlogic::SetDisplayResolution(const RESOLUTION_INFO &res)
 {
-  std::string mode = resolution;
+  std::string mode = res.strId.c_str();
+  std::string cur_mode;
+
   // switch display resolution
+  SysfsUtils::GetString("/sys/class/display/mode", cur_mode);
+
+  if (cur_mode == mode)
+    SysfsUtils::SetString("/sys/class/display/mode", "null");
+
+  int fractional_rate = (res.fRefreshRate == floor(res.fRefreshRate)) ? 0 : 1;
+  SysfsUtils::SetInt("/sys/class/amhdmitx/amhdmitx0/frac_rate_policy", fractional_rate);
+
   SysfsUtils::SetString("/sys/class/display/mode", mode.c_str());
 
-  RESOLUTION_INFO res;
-  aml_mode_to_resolution(mode.c_str(), &res);
   SetFramebufferResolution(res);
 
   return true;
