@@ -64,6 +64,9 @@ void CVideoSyncAML::Run(std::atomic<bool>& stop)
   unsigned int waittime (3000 / m_fps);
   uint64_t numVBlanks (0);
 
+  /* This shouldn't be very busy and timing is important so increase priority */
+  CThread::GetCurrentThread()->SetPriority(CThread::GetCurrentThread()->GetPriority()+1);
+
   while (!stop && !m_abort)
   {
     int countVSyncs(1);
