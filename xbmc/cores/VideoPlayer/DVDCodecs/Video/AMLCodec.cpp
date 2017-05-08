@@ -1896,26 +1896,19 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   float timesize(GetTimeSize());
 
-  if (m_drain)
-  {
+  if (timesize > 0.5 || m_drain)
     if (DequeueBuffer() == 0)
     {
-      rtn = VC_PICTURE;
+      rtn |= VC_PICTURE;
       m_noPictureLoop = 0;
     }
-    else if (++m_noPictureLoop == 10 || timesize == 0.0) // EOS
-      rtn = VC_BUFFER;
-  }
-  else
-  {
-    m_noPictureLoop = 0;
 
-    if (timesize > 0.5 && DequeueBuffer() == 0)
-      rtn |= VC_PICTURE;
+  if (++m_noPictureLoop == 100 || timesize == 0.0) // EOS or stalled
+    rtn |= VC_BUFFER;
 
+  if (!m_drain)
     if (timesize < 1.0)
       rtn |= VC_BUFFER;
-  }
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
