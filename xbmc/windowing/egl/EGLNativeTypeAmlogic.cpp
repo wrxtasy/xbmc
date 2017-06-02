@@ -153,13 +153,7 @@ bool CEGLNativeTypeAmlogic::SetNativeResolution(const RESOLUTION_INFO &res)
   }
 #endif
 
-  // Don't set the same mode as current
-  RESOLUTION_INFO current_resolution;
-  GetNativeResolution(&current_resolution);
-  if (current_resolution.strId != res.strId ||
-    current_resolution.fRefreshRate != res.fRefreshRate)
-    result = SetDisplayResolution(res);
-
+  result = SetDisplayResolution(res);
   DealWithScale(res);
 
   RENDER_STEREO_MODE stereo_mode = g_graphicsContext.GetStereoMode();
