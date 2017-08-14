@@ -153,6 +153,8 @@ bool CEGLNativeTypeAmlogic::SetNativeResolution(const RESOLUTION_INFO &res)
   }
 #endif
 
+  aml_handle_display_stereo_mode(RENDER_STEREO_MODE_OFF);
+
   result = SetDisplayResolution(res);
   DealWithScale(res);
 
