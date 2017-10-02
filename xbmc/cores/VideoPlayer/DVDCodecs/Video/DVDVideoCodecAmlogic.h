@@ -93,8 +93,6 @@ protected:
   DVDVideoPicture m_videobuffer;
   bool            m_opened;
   CDVDStreamInfo  m_hints;
-  double          m_last_pts;
-  frame_queue    *m_frame_queue;
   int32_t         m_queue_depth;
   pthread_mutex_t m_queue_mutex;
   double          m_framerate;
