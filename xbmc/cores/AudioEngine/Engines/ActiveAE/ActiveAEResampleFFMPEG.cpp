@@ -75,6 +75,12 @@ bool CActiveAEResampleFFMPEG::Init(uint64_t dst_chan_layout, int dst_channels, i
     return false;
   }
 
+  double mix_lfe = (float) CSettings::GetInstance().GetInt("audiooutput.mixlfe") / (float) 100;
+  if (mix_lfe)
+  {
+    av_opt_set_double(m_pContext, "lfe_mix_level", mix_lfe, 0);
+  }
+
   if(quality == AE_QUALITY_HIGH)
   {
     av_opt_set_double(m_pContext, "cutoff", 1.0, 0);
