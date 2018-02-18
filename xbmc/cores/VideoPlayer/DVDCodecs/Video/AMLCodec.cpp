@@ -2023,6 +2023,9 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
 
   float timesize(GetTimeSize());
 
+  if (!m_drain && timesize < 0.2)
+     rtn |= VC_BUFFER;
+
   if (timesize > 0.5 || m_drain)
     if (DequeueBuffer() == 0)
     {
@@ -2034,8 +2037,10 @@ int CAMLCodec::Decode(uint8_t *pData, size_t iSize, double dts, double pts)
     rtn |= VC_BUFFER;
 
   if (!m_drain)
-    if (timesize < 1.0)
+    if (timesize < 1.0) {
       rtn |= VC_BUFFER;
+      usleep(5000);
+    }
 
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
   {
