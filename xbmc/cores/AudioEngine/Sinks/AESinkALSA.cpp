@@ -103,6 +103,7 @@ static int CheckNP2(unsigned x)
     else return x >> 1;
 }
 
+int speaker_layout = 0;
 
 CAESinkALSA::CAESinkALSA() :
   m_bufferSize(0),
@@ -240,7 +241,7 @@ inline CAEChannelInfo CAESinkALSA::GetChannelLayout(const AEAudioFormat& format,
 
   CLog::Log(LOGDEBUG, "CAESinkALSA::GetChannelLayout - Input Channel Count: %d Output Channel Count: %d", format.m_channelLayout.Count(), info.Count());
   CLog::Log(LOGDEBUG, "CAESinkALSA::GetChannelLayout - Requested Layout: %s", std::string(format.m_channelLayout).c_str());
-  CLog::Log(LOGDEBUG, "CAESinkALSA::GetChannelLayout - Got Layout: %s (ALSA: %s)", std::string(info).c_str(), alsaMapStr.c_str());
+  CLog::Log(LOGDEBUG, "CAESinkALSA::GetChannelLayout - Got Layout: %s (ALSA: %s) (CEA: %d)", std::string(info).c_str(), alsaMapStr.c_str(), speaker_layout);
 
   return info;
 }
@@ -532,6 +533,8 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   inconfig.format = format.m_dataFormat;
   inconfig.sampleRate = format.m_sampleRate;
 
+  CLog::Log(LOGINFO, "CAESinkALSA::Initialize - Requested layout: %s", std::string(format.m_channelLayout).c_str());
+
   /*
    * We can't use the better GetChannelLayout() at this point as the device
    * is not opened yet, and we need inconfig.channels to select the correct
@@ -551,8 +554,6 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
     m_passthrough   = false;
   }
 
-  if (device.find("M8AUDIO") != std::string::npos)
-  {
     int aml_digital_codec = 0;
 
     if (m_passthrough)
@@ -590,7 +591,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
 
     aml_set_audio_passthrough(m_passthrough);
     SysfsUtils::SetInt("/sys/class/audiodsp/digital_codec", aml_digital_codec);
-  }
+    CLog::Log(LOGINFO, "CAESinkALSA::Initialize - set digital_codec %d", aml_digital_codec);
 
   if (inconfig.channels == 0)
   {
@@ -652,10 +653,45 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
 #ifdef SND_CHMAP_API_VERSION
   if (selectedChmap)
   {
+         /* Channel layout should match one of those offered by the sink
+          * Find out which one it is
+          */
+
+         snd_pcm_chmap_query_t** supportedMaps;
+         supportedMaps = snd_pcm_query_chmaps(m_pcm);
+         /* set default stereo */
+      SysfsUtils::SetInt("/sys/class/amhdmitx/amhdmitx0/aud_ch", 0);
+      int i = 0;
+         for (snd_pcm_chmap_query_t* supportedMap = supportedMaps[i++];
+                         supportedMap; supportedMap = supportedMaps[i++])
+         {
+                 if (ALSAchmapToString(&supportedMap->map) == ALSAchmapToString(selectedChmap)) {
+                         speaker_layout = --i;
+                         SysfsUtils::SetInt("/sys/class/amhdmitx/amhdmitx0/aud_ch", speaker_layout);
+                         break;
+                 }
+         }
+
     /* failure is OK, that likely just means the selected chmap is fixed already */
     snd_pcm_set_chmap(m_pcm, selectedChmap);
     free(selectedChmap);
   }
+  else
+  {
+         /* while i2s driver is broken, this is essential */
+         if (outconfig.channels == 2 || m_passthrough)
+         {
+                 SysfsUtils::SetInt("/sys/class/amhdmitx/amhdmitx0/aud_ch", 0);
+               CLog::Log(LOGINFO, "CAESinkALSA::Initialize - setting default aud_ch to 0");
+         }
+         else
+         {
+               SysfsUtils::SetInt("/sys/class/amhdmitx/amhdmitx0/aud_ch", 19);
+               CLog::Log(LOGINFO, "CAESinkALSA::Initialize - setting default aud_ch to 19");
+         }
+
+  }
+
 #endif
 
   // we want it blocking
@@ -810,7 +846,7 @@ bool CAESinkALSA::InitializeHW(const ALSAConfig &inconfig, ALSAConfig &outconfig
 
   #if defined(HAS_LIBAMCODEC)
     bufferSize  = CheckNP2(bufferSize);
-  #endif;
+  #endif
 
   /* 
    According to upstream we should set buffer size first - so make sure it is always at least
@@ -820,7 +856,7 @@ bool CAESinkALSA::InitializeHW(const ALSAConfig &inconfig, ALSAConfig &outconfig
 
   #if defined(HAS_LIBAMCODEC)
     bufferSize  = CheckNP2(bufferSize);
-  #endif;
+  #endif
 
   CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Request: periodSize %lu, bufferSize %lu", periodSize, bufferSize);
 
@@ -948,7 +984,7 @@ void CAESinkALSA::Stop()
 {
   if (!m_pcm)
     return;
-  snd_pcm_drop(m_pcm);
+  snd_pcm_drain(m_pcm);
 }
 
 void CAESinkALSA::GetDelay(AEDelayStatus& status)
