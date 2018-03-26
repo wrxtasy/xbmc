@@ -1217,7 +1217,7 @@ const infomap system_labels[] =  {{ "hasnetwork",       SYSTEM_ETHERNET_LINK_ACT
                                   { "profilecount",     SYSTEM_PROFILECOUNT },
                                   { "profileautologin", SYSTEM_PROFILEAUTOLOGIN },
                                   { "progressbar",      SYSTEM_PROGRESS_BAR },
-                                  { "batterylevel",     SYSTEM_BATTERY_LEVEL },
+                                  { "linuxver",         SYSTEM_LINUX_VER },
                                   { "friendlyname",     SYSTEM_FRIENDLY_NAME },
                                   { "alarmpos",         SYSTEM_ALARM_POS },
                                   { "isinhibit",        SYSTEM_ISINHIBIT },
@@ -6341,7 +6341,7 @@ std::string CGUIInfoManager::GetLabel(int info, int contextWindow, std::string *
   case SYSTEM_INTERNET_STATE:
   case SYSTEM_UPTIME:
   case SYSTEM_TOTALUPTIME:
-  case SYSTEM_BATTERY_LEVEL:
+  case SYSTEM_LINUX_VER:
     return g_sysinfo.GetInfo(info);
     break;
 
@@ -6826,9 +6826,6 @@ bool CGUIInfoManager::GetInt(int &value, int info, int contextWindow, const CGUI
     case PVR_BACKEND_DISKSPACE_PROGR:
     case PVR_TIMESHIFT_PROGRESS:
       value = g_PVRManager.TranslateIntInfo(info);
-      return true;
-    case SYSTEM_BATTERY_LEVEL:
-      value = g_powerManager.BatteryLevel();
       return true;
   }
   return false;

@@ -107,6 +107,7 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s: %s", 150, NETWORK_IP_ADDRESS);
     SetControlLabel(i++, "%s %s", 13287, SYSTEM_SCREEN_RESOLUTION);
     SetControlLabel(i++, "%s %s", 13283, SYSTEM_OS_VERSION_INFO);
+    SetControlLabel(i++, "%s: %s", 12395, SYSTEM_LINUX_VER);
     SetControlLabel(i++, "%s: %s", 12390, SYSTEM_UPTIME);
     SetControlLabel(i++, "%s: %s", 12394, SYSTEM_TOTALUPTIME);
   }

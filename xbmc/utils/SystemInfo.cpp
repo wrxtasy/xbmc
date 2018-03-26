@@ -257,9 +257,9 @@ bool CSysInfoJob::DoWork()
   m_info.internetState     = GetInternetState();
   m_info.videoEncoder      = GetVideoEncoder();
   m_info.cpuFrequency      = GetCPUFreqInfo();
-  m_info.osVersionInfo     = CSysInfo::GetOsPrettyNameWithVersion() + " (kernel: " + CSysInfo::GetKernelName() + " " + CSysInfo::GetKernelVersionFull() + ")";
+  m_info.osVersionInfo     = CSysInfo::GetOsPrettyNameWithVersion();
   m_info.macAddress        = GetMACAddress();
-  m_info.batteryLevel      = GetBatteryLevel();
+  m_info.linuxver          = CSysInfo::GetKernelVersionFull();
   return true;
 }
 
@@ -296,11 +296,6 @@ std::string CSysInfoJob::GetMACAddress()
 std::string CSysInfoJob::GetVideoEncoder()
 {
   return "GPU: " + g_Windowing.GetRenderRenderer();
-}
-
-std::string CSysInfoJob::GetBatteryLevel()
-{
-  return StringUtils::Format("%d%%", g_powerManager.BatteryLevel());
 }
 
 double CSysInfoJob::GetCPUFrequency()
@@ -388,8 +383,8 @@ std::string CSysInfo::TranslateInfo(int info) const
       return g_localizeStrings.Get(13296);
     else
       return g_localizeStrings.Get(13297);
-  case SYSTEM_BATTERY_LEVEL:
-    return m_info.batteryLevel;
+  case SYSTEM_LINUX_VER:
+    return m_info.linuxver;
   default:
     return "";
   }
@@ -575,18 +570,20 @@ std::string CSysInfo::GetKernelName(bool emptyIfUnknown /*= false*/)
 std::string CSysInfo::GetKernelVersionFull(void)
 {
   static std::string kernelVersionFull;
+  static std::string kernelVersionR;
+  static std::string kernelVersionV;
+  static std::string kernelVersionM;
   if (!kernelVersionFull.empty())
     return kernelVersionFull;
 
-#if defined(TARGET_WINDOWS)
-  OSVERSIONINFOEXW osvi;
-  if (sysGetVersionExWByRef(osvi))
-    kernelVersionFull = StringUtils::Format("%d.%d", osvi.dwMajorVersion, osvi.dwMinorVersion);
-#elif defined(TARGET_POSIX)
   struct utsname un;
   if (uname(&un) == 0)
-    kernelVersionFull.assign(un.release);
-#endif // defined(TARGET_POSIX)
+  {
+    kernelVersionR.assign(un.release);
+    kernelVersionV.assign(un.version);
+    kernelVersionM.assign(un.machine);
+  }
+  kernelVersionFull = kernelVersionR + " " + kernelVersionM;
 
   if (kernelVersionFull.empty())
     kernelVersionFull = "0.0.0"; // can't detect
@@ -761,7 +758,7 @@ std::string CSysInfo::GetOsPrettyNameWithVersion(void)
   }
 
   if (osNameVer.find(GetOsVersion()) == std::string::npos)
-    osNameVer += " " + GetOsVersion();
+    osNameVer += " (" + GetOsVersion() + ")";
 #endif // defined(TARGET_LINUX)
 
   if (osNameVer.empty())
