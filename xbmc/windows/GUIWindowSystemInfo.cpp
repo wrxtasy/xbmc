@@ -59,7 +59,7 @@ bool CGUIWindowSystemInfo::OnMessage(CGUIMessage& message)
     case GUI_MSG_WINDOW_INIT:
     {
       CGUIWindow::OnMessage(message);
-      SET_CONTROL_LABEL(52, CSysInfo::GetAppName() + " " + CSysInfo::GetVersion());
+      SET_CONTROL_LABEL(52, "AMLogic S9xx running " + CSysInfo::GetAppName() + " " + CSysInfo::GetVersion());
       SET_CONTROL_LABEL(53, CSysInfo::GetBuildDate());
       CONTROL_ENABLE_ON_CONDITION(CONTROL_BT_PVR, PVR::CPVRManager::GetInstance().IsStarted());
       return true;
@@ -109,7 +109,6 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s %s", 13283, SYSTEM_OS_VERSION_INFO);
     SetControlLabel(i++, "%s: %s", 12390, SYSTEM_UPTIME);
     SetControlLabel(i++, "%s: %s", 12394, SYSTEM_TOTALUPTIME);
-    SetControlLabel(i++, "%s: %s", 12395, SYSTEM_BATTERY_LEVEL);
   }
 
   else if (m_section == CONTROL_BT_STORAGE)
@@ -132,8 +131,6 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s: %s", 150, NETWORK_IP_ADDRESS);
     SetControlLabel(i++, "%s: %s", 13159, NETWORK_SUBNET_MASK);
     SetControlLabel(i++, "%s: %s", 13160, NETWORK_GATEWAY_ADDRESS);
-    SetControlLabel(i++, "%s: %s", 13161, NETWORK_DNS1_ADDRESS);
-    SetControlLabel(i++, "%s: %s", 20307, NETWORK_DNS2_ADDRESS);
     SetControlLabel(i++, "%s %s", 13295, SYSTEM_INTERNET_STATE);
   }
 
@@ -148,7 +145,7 @@ void CGUIWindowSystemInfo::FrameMove()
 #else
     SetControlLabel(i++, "%s %s", 22024, SYSTEM_RENDER_VERSION);
 #endif
-#if !defined(__arm__) && !defined(__aarch64__) && !defined(HAS_DX)
+#if (defined(__arm__) || defined(__aarch64__)) && !defined(HAS_DX)
     SetControlLabel(i++, "%s %s", 22010, SYSTEM_GPU_TEMPERATURE);
 #endif
   }
@@ -157,17 +154,15 @@ void CGUIWindowSystemInfo::FrameMove()
   {
     SET_CONTROL_LABEL(40,g_localizeStrings.Get(20160));
     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUModel());
-#if defined(__arm__) && defined(TARGET_LINUX)
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUBogoMips());
+#if (defined(__arm__) || defined(__aarch64__)) && defined(TARGET_LINUX)
     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUHardware());
     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPURevision());
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSerial());
 #endif
     SetControlLabel(i++, "%s %s", 22011, SYSTEM_CPU_TEMPERATURE);
-#if (!defined(__arm__) && !defined(__aarch64__)) || defined(TARGET_RASPBERRY_PI)
+#if (defined(__arm__) || defined(__aarch64__)) || defined(TARGET_RASPBERRY_PI)
     SetControlLabel(i++, "%s %s", 13284, SYSTEM_CPUFREQUENCY);
 #endif
-#if !(defined(__arm__) && defined(TARGET_LINUX))
+#if !((defined(__arm__) || defined(__aarch64__)) && defined(TARGET_LINUX))
     SetControlLabel(i++, "%s %s", 13271, SYSTEM_CPU_USAGE);
 #endif
     i++;  // empty line
