@@ -72,6 +72,7 @@ public:
   bool forced_aspect; // aspect is forced from container
   int orientation; // orientation of the video in degress counter clockwise
   int bitsperpixel;
+  bool is2020;
   std::string stereo_mode; // stereoscopic 3d mode
 
   // AUDIO

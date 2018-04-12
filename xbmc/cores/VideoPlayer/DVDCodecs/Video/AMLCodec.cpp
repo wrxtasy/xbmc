@@ -1744,6 +1744,11 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
       am_private->gcodec.param  = (void*)EXTERNAL_PTS;
       if (m_hints.ptsinvalid)
         am_private->gcodec.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+      if (m_hints.is2020 && CSettings::GetInstance().GetBool(CSettings::SETTING_AMLOGIC_COLORSPACE))
+      {
+	 CLog::Log(LOGDEBUG, "BT2020 auto switch is enabled");
+	 SysfsUtils::SetString("/sys/class/amhdmitx/amhdmitx0/attr", "422,10bit");
+      }
       break;
     case VFORMAT_VP9:
       am_private->gcodec.format = VIDEO_DEC_FORMAT_VP9;
@@ -1888,6 +1893,8 @@ void CAMLCodec::CloseAmlVideo()
 {
   m_amlVideoFile.reset();
   SetVfmMap("default", m_defaultVfmMap);
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_AMLOGIC_COLORSPACE))
+    SysfsUtils::SetString("/sys/class/amhdmitx/amhdmitx0/attr", "reset");
 }
 
 void CAMLCodec::Reset()
