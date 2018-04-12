@@ -233,6 +233,7 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     orientation = stream->iOrientation;
     bitsperpixel = stream->iBitsPerPixel;
     stereo_mode = stream->stereo_mode;
+    is2020 = stream->is2020;
   }
   else if(  right.type == STREAM_SUBTITLE )
   {
