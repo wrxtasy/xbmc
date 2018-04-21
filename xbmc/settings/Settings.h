@@ -306,6 +306,11 @@ public:
   static const std::string SETTING_VIDEOSCREEN_TESTPATTERN;
   static const std::string SETTING_VIDEOSCREEN_LIMITEDRANGE;
   static const std::string SETTING_VIDEOSCREEN_FRAMEPACKING;
+  static const std::string SETTING_AMLOGIC_GPUCLOCK;
+  static const std::string SETTING_AMLOGIC_COLORSPACE;
+  static const std::string SETTING_AMLOGIC_FORCERGB;
+  static const std::string SETTING_AMLOGIC_DIPOSTPROCESSING;
+  static const std::string SETTING_AMLOGIC_MUTEHDMIAUDIO;
   static const std::string SETTING_AUDIOOUTPUT_AUDIODEVICE;
   static const std::string SETTING_AUDIOOUTPUT_CHANNELS;
   static const std::string SETTING_AUDIOOUTPUT_CONFIG;

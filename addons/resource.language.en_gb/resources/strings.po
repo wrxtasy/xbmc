@@ -7805,7 +7805,45 @@ msgctxt "#14277"
 msgid "Allow remote control from applications on other systems"
 msgstr ""
 
-#empty strings from id 14278 to 14299
+#: system/settings/settings.xml
+msgctxt "#14278"
+msgid "AMLogic"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14279"
+msgid "AMLogic specific Kodi settings.."
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14280"
+msgid "AMLogic Settings"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14281"
+msgid "Set GPU Clock rate to 792 MHz"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14282"
+msgid "Enable autoswitching chroma & bit depth to 444,10bit for 24p 4K HDR"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14283"
+msgid "Force RGB output"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14284"
+msgid "Disable deinterlaced post processing"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#14285"
+msgid "Mute HDMI audio output"
+msgstr ""
 
 #: system/settings/settings.xml
 msgctxt "#14300"
@@ -18491,7 +18529,32 @@ msgctxt "#36461"
 msgid "Notification event describe regular processes and actions performed by the system or the user."
 msgstr ""
 
-#empty strings from id 36462 to 36499
+#: Description of display setting with label # 14281
+msgctxt "#36462"
+msgid "Set GPU to 792MHz for a faster Kodi graphic user interface. Please check GPU temps. Requires a reboot."
+msgstr ""
+
+#: Description of display setting with label # 14282
+msgctxt "#36463"
+msgid "Enable auto 4:4:4 Chroma subsampling and 10bit color depth for 24p 4K HDR video playback. A High speed or Premium certified HDMI 2.0a cable must be used."
+msgstr ""
+
+#: Description of display setting with label # 14283
+msgctxt "#36464"
+msgid "Enable this to force RGB output for some problematic legacy Sony & Philips TVs. Fixes blue / green screen flashes. Requires a reboot."
+msgstr ""
+
+#: Description of display setting with label # 14284
+msgctxt "#36465"
+msgid "Disables deinterlaced post processing. Use this setting if seeing horizontal red line picture output artifacts when viewing TV. Requires a reboot."
+msgstr ""
+
+#: Description of display setting with label # 14285
+msgctxt "#36466"
+msgid "Turns off HDMI audio. Useful if you're using SPDIF audio and don't want audio on HDMI."
+msgstr ""
+
+#empty strings from id 36467 to 36499
 #end reservation
 
 #. label of a setting for the stereoscopic 3D mode of the GUI that is/should be applied

@@ -25,6 +25,8 @@
 #include "utils/StringUtils.h"
 #include "utils/SysfsUtils.h"
 #include "filesystem/SpecialProtocol.h"
+#include "utils/log.h"
+#include "settings/Settings.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,6 +77,23 @@ void CEGLNativeTypeAmlogic::Destroy()
 
 bool CEGLNativeTypeAmlogic::CreateNativeDisplay()
 {
+  const CSettings &s = CSettings::GetInstance();
+
+  if (s.GetBool(CSettings::SETTING_AMLOGIC_GPUCLOCK))
+  {
+     CLog::Log(LOGDEBUG, "CEGLNativeTypeAmlogic::InitWindowSystem -- gpu clock set to 792MHz");
+     SysfsUtils::SetString("/sys/class/mpgpu/scale_mode", "2");
+  }
+  if (s.GetBool(CSettings::SETTING_AMLOGIC_DIPOSTPROCESSING))
+  {
+     CLog::Log(LOGDEBUG, "CEGLNativeTypeAmlogic::InitWindowSystem -- disabling deinterlacing post processing");
+     SysfsUtils::SetString("/sys/module/di/parameters/bypass_hd", "1");
+  }
+  if (s.GetBool(CSettings::SETTING_AMLOGIC_FORCERGB))
+  {
+     CLog::Log(LOGDEBUG, "CEGLNativeTypeAmlogic::InitWindowSystem -- forcing RGB");
+     SysfsUtils::SetString("/sys/class/amhdmitx/amhdmitx0/output_rgb", "1");
+  }
   m_nativeDisplay = EGL_DEFAULT_DISPLAY;
   return true;
 }

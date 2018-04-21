@@ -2916,6 +2916,35 @@
         </setting>
       </group>
     </category>
+    <category id="amlogic" label="14278" help="14279">
+      <group id="1" label="14280">
+        <setting id="amlogic.gpuclock" type="boolean" label="14281" help="36462">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="amlogic.colorspace" type="boolean" label="14282" help="36463">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="amlogic.forcergb" type="boolean" label="14283" help="36464">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="amlogic.dipostprocessing" type="boolean" label="14284" help="36465">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="amlogic.mutehdmiaudio" type="boolean" label="14285" help="36466">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+      </group>
+    </category>
     <category id="cache" label="439" help="36399">
       <visible>false</visible>
       <group id="1">

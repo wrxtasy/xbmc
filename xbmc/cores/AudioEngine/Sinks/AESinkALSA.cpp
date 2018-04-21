@@ -35,6 +35,7 @@
 #include "utils/MathUtils.h"
 #include "utils/SystemInfo.h"
 #include "threads/SingleLock.h"
+#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
 #if defined(HAS_LIBAMCODEC)
 #include "utils/AMLUtils.h"
@@ -599,7 +600,16 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
     return false;
   }
 
-  AEDeviceType devType = AEDeviceTypeFromName(device);
+ if (CSettings::GetInstance().GetBool(CSettings::SETTING_AMLOGIC_MUTEHDMIAUDIO)) {
+    CLog::Log(LOGDEBUG, "CAESinkALSA::Initialize -- muting HDMI");
+    SysfsUtils::SetString("/sys/class/amhdmitx/amhdmitx0/config", "audio_off");
+ }
+ else {
+    CLog::Log(LOGDEBUG, "CAESinkALSA::Initialize -- unmuting HDMI");
+    SysfsUtils::SetString("/sys/class/amhdmitx/amhdmitx0/config", "audio_on");
+ }
+
+ AEDeviceType devType = AEDeviceTypeFromName(device);
 
   std::string AESParams;
   /* digital interfaces should have AESx set, though in practice most
