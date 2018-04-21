@@ -88,6 +88,12 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     case AV_CODEC_ID_MPEG2VIDEO_XVMC:
       if (m_hints.width <= CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG2))
         return false;
+
+      // if we have SD PAL content assume it is widescreen
+      // correct aspect ratio will be detected later anyway
+      if ((m_hints.width == 720 || m_hints.width == 544 || m_hints.width == 480) && m_hints.height == 576 && m_hints.aspect == 0.0f)
+          m_hints.aspect = 16.0 / 9.0;
+
       m_mpeg2_sequence_pts = 0;
       m_mpeg2_sequence = new mpeg2_sequence;
       m_mpeg2_sequence->width  = m_hints.width;
@@ -151,12 +157,12 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
       // if we have SD PAL content assume it is widescreen
       // correct aspect ratio will be detected later anyway
       if (m_hints.width == 720 && m_hints.height == 576 && m_hints.aspect == 0.0f)
-          m_hints.aspect = 1.8181818181818181;
+          m_hints.aspect = 16.0 / 9.0;
 
       // assume widescreen for "HD Lite" channels
       // correct aspect ratio will be detected later anyway
       if ((m_hints.width == 1440 || m_hints.width ==1280) && m_hints.height == 1080 && m_hints.aspect == 0.0f)
-          m_hints.aspect = 1.7777777777777778;
+          m_hints.aspect = 16.0 / 9.0;
 
       break;
     case AV_CODEC_ID_MPEG4:
@@ -223,6 +229,7 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
       m_hints.extrasize = m_bitstream->GetExtraSize();
       m_hints.extradata = malloc(m_hints.extrasize);
       memcpy(m_hints.extradata, m_bitstream->GetExtraData(), m_hints.extrasize);
+      m_hints.aspect = 16.0 / 9.0;
       break;
     default:
       CLog::Log(LOGDEBUG, "%s: Unknown hints.codec(%d", __MODULE_NAME__, m_hints.codec);
@@ -508,6 +515,7 @@ void CDVDVideoCodecAmlogic::FrameRateTracking(uint8_t *pData, int iSize, double 
       m_hints.width    = m_h264_sequence->width;
       m_hints.height   = m_h264_sequence->height;
       m_hints.aspect   = m_h264_sequence->ratio;
+      m_processInfo.SetVideoDAR(m_h264_sequence->ratio);
     }
   }
 }
