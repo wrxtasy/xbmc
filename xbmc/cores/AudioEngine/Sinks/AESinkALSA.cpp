@@ -131,10 +131,11 @@ inline CAEChannelInfo CAESinkALSA::GetChannelLayoutRaw(const AEAudioFormat& form
 
   switch (format.m_streamInfo.m_type)
   {
-    case CAEStreamInfo::STREAM_TYPE_DTSHD:
     case CAEStreamInfo::STREAM_TYPE_TRUEHD:
+    case CAEStreamInfo::STREAM_TYPE_DTSHD_XLL:
       count = 8;
       break;
+    case CAEStreamInfo::STREAM_TYPE_DTSHD:
     case CAEStreamInfo::STREAM_TYPE_DTSHD_CORE:
     case CAEStreamInfo::STREAM_TYPE_DTS_512:
     case CAEStreamInfo::STREAM_TYPE_DTS_1024:
@@ -571,23 +572,20 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
         case CAEStreamInfo::STREAM_TYPE_DTSHD_CORE:
           aml_digital_codec = 3;
           break;
+        case CAEStreamInfo::STREAM_TYPE_DTSHD:
+          aml_digital_codec = 5;
+          break;
+        case CAEStreamInfo::STREAM_TYPE_DTSHD_XLL:
+          aml_digital_codec = 8;
+          break;
 
         case CAEStreamInfo::STREAM_TYPE_EAC3:
           aml_digital_codec = 4;
           break;
-
-        case CAEStreamInfo::STREAM_TYPE_DTSHD:
-          aml_digital_codec = 8;
-          break;
-
         case CAEStreamInfo::STREAM_TYPE_TRUEHD:
           aml_digital_codec = 7;
           break;
       }
-    }
-    else
-    {
-      device = "@:CARD=AMLM8AUDIO,DEV=0";
     }
 
     else if (device.find("M8AUDIO") != std::string::npos)
@@ -620,7 +618,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   if (m_passthrough || devType == AE_DEVTYPE_HDMI || devType == AE_DEVTYPE_IEC958)
     GetAESParams(format, AESParams);
 
-  CLog::Log(LOGINFO, "CAESinkALSA::Initialize - Attempting to open device \"%s\"", device.c_str());
+  CLog::Log(LOGINFO, "CAESinkALSA::Initialize - Attempting to open device \"%s\"\n with %s", device.c_str(), AESParams.c_str());
 
   /* get the sound config */
   snd_config_t *config;
@@ -1204,8 +1202,8 @@ bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &para
       if (devPos != std::string::npos)
         nameWithoutDev.erase(nameWithoutDev.begin() + devPos, nameWithoutDev.begin() + devPos + 6);
 
-      if (TryDeviceWithParams("sysdefault" + nameWithoutDev, params, pcmp, lconf)
-          || TryDeviceWithParams("default" + nameWithoutDev, params, pcmp, lconf))
+      if (TryDeviceWithParams("default" + nameWithoutDev, params, pcmp, lconf)
+          || TryDeviceWithParams("sysdefault" + nameWithoutDev, params, pcmp, lconf))
         return true;
     }
 
@@ -1673,6 +1671,7 @@ void CAESinkALSA::EnumerateDevice(AEDeviceInfoList &list, const std::string &dev
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_AC3);
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTSHD);
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTSHD_CORE);
+    info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTSHD_XLL);
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_1024);
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_2048);
     info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_512);

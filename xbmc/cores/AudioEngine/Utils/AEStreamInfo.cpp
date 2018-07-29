@@ -28,6 +28,12 @@
 #define DTS_PREAMBLE_16BE  0x7FFE8001
 #define DTS_PREAMBLE_16LE  0xFE7F0180
 #define DTS_PREAMBLE_HD    0x64582025
+#define DTS_PREAMBLE_XCH   0x5a5a5a5a
+#define DTS_PREAMBLE_XXCH  0x47004a03
+#define DTS_PREAMBLE_X96K  0x1d95f262
+#define DTS_PREAMBLE_XBR   0x655e315e
+#define DTS_PREAMBLE_LBR   0x0a801921
+#define DTS_PREAMBLE_XLL   0x41a29547
 #define DTS_SFREQ_COUNT    16
 #define MAX_EAC3_BLOCKS    6
 
@@ -107,6 +113,7 @@ double CAEStreamInfo::GetDuration()
     case STREAM_TYPE_DTS_512:
     case STREAM_TYPE_DTSHD_CORE:
     case STREAM_TYPE_DTSHD:
+    case STREAM_TYPE_DTSHD_XLL:
       duration = 512.0 / m_sampleRate;
       break;
     case STREAM_TYPE_DTS_1024:
@@ -504,6 +511,7 @@ unsigned int CAEStreamParser::SyncDTS(uint8_t *data, unsigned int size)
     unsigned int dtsBlocks;
     unsigned int amode;
     unsigned int sfreq;
+    unsigned int target_rate, extension, ext_type;
     unsigned int lfe;
     int bits;
 
@@ -547,6 +555,9 @@ unsigned int CAEStreamParser::SyncDTS(uint8_t *data, unsigned int size)
         m_fsize = (((((data[5] & 0x3) << 8) | data[6]) << 4) | ((data[7] & 0xF0) >> 4)) + 1;
         amode = ((data[7] & 0x0F) << 2) | ((data[8] & 0xC0) >> 6);
         sfreq = (data[8] & 0x3C) >> 2;
+        target_rate = ((data[8] & 0x03) << 3) | ((data[9] & 0xe0) >> 5);
+        extension = (data[10] & 0x10) >> 4;
+        ext_type = (data[10] & 0xe0) >> 5;
         lfe = (data[10] >> 1) & 0x3;
         m_info.m_dataIsLE = false;
         bits = 16;
@@ -616,11 +627,27 @@ unsigned int CAEStreamParser::SyncDTS(uint8_t *data, unsigned int size)
       else
         hd_size = (((data[m_fsize + 6] & 0x1f) << 11) | (data[m_fsize + 7] << 3) | ((data[m_fsize + 8] & 0xe0) >> 5)) + 1;
 
+	  int header_size;
+	  if (blownup)
+		header_size = (((data[m_fsize + 5] & 0x1f) << 7) | ((data[m_fsize + 6] & 0xfe) >> 1)) + 1;
+	  else
+		header_size = (((data[m_fsize + 5] & 0x1f) << 3) | ((data[m_fsize + 6] & 0xe0) >> 5)) + 1;
+
+	  hd_sync = data[m_fsize + header_size] << 24 | data[m_fsize + header_size + 1] << 16 | data[m_fsize + header_size + 2] << 8 | data[m_fsize + header_size + 3];
+
       /* set the type according to core or not */
-      if (m_coreOnly)
-        dataType = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
-      else
-        dataType = CAEStreamInfo::STREAM_TYPE_DTSHD;
+	  if (m_coreOnly)
+		  dataType = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
+	  else if (hd_sync == DTS_PREAMBLE_XLL)
+		  dataType = CAEStreamInfo::STREAM_TYPE_DTSHD_XLL;
+	  else if (hd_sync == DTS_PREAMBLE_XCH
+			  || hd_sync == DTS_PREAMBLE_XXCH
+			  || hd_sync == DTS_PREAMBLE_X96K
+			  || hd_sync == DTS_PREAMBLE_XBR
+			  || hd_sync == DTS_PREAMBLE_LBR)
+		  dataType = CAEStreamInfo::STREAM_TYPE_DTSHD;
+	  else
+		dataType = m_info.m_type;
 
       m_coreSize = m_fsize;
       m_fsize += hd_size;
@@ -636,15 +663,17 @@ unsigned int CAEStreamParser::SyncDTS(uint8_t *data, unsigned int size)
       m_info.m_channels = DTSChannels[amode] + (lfe ? 1 : 0);
       m_syncFunc = &CAEStreamParser::SyncDTS;
       m_info.m_repeat = 1;
-
-      if (dataType == CAEStreamInfo::STREAM_TYPE_DTSHD)
+      switch (dataType)
       {
-        m_info.m_channels += 2; /* FIXME: this needs to be read out, not sure how to do that yet */
-        m_info.m_dtsPeriod = (192000 * (8 >> 1)) * (m_dtsBlocks << 5) / m_info.m_sampleRate;
-      }
-      else
-      {
-        m_info.m_dtsPeriod = (m_info.m_sampleRate * (2 >> 1)) * (m_dtsBlocks << 5) / m_info.m_sampleRate;
+        case CAEStreamInfo::STREAM_TYPE_DTSHD_XLL:
+	        m_info.m_channels += 2; /* FIXME: this needs to be read out, not sure how to do that yet */
+	        m_info.m_dtsPeriod = (192000 * (8 >> 1)) * (m_dtsBlocks << 5) / m_info.m_sampleRate;
+			break;
+        case CAEStreamInfo::STREAM_TYPE_DTSHD:
+	        m_info.m_dtsPeriod = (192000 * (2 >> 1)) * (m_dtsBlocks << 5) / m_info.m_sampleRate;
+			break;
+		default:
+	        m_info.m_dtsPeriod = (m_info.m_sampleRate * (2 >> 1)) * (m_dtsBlocks << 5) / m_info.m_sampleRate;
       }
 
       std::string type;
@@ -656,15 +685,33 @@ unsigned int CAEStreamParser::SyncDTS(uint8_t *data, unsigned int size)
         case CAEStreamInfo::STREAM_TYPE_DTSHD_CORE:
           type = "dtsHD (core)";
           break;
+        case CAEStreamInfo::STREAM_TYPE_DTSHD_XLL:
+          type = "dtsHD MA";
+          break;
         default:
           type = "dts";
           break;
       }
 
-      CLog::Log(LOGINFO, "CAEStreamParser::SyncDTS - %s stream detected (%d channels, %dHz, %dbit %s, period: %u)",
+	  if (extension) switch (ext_type)
+	  {
+		  case 0:
+			  type += " XCH";
+			  break;
+		  case 2:
+			  type += " X96";
+			  break;
+		  case 6:
+			  type += " XXCH";
+			  break;
+		  default:
+			  type += " ext unknown";
+	  }
+
+      CLog::Log(LOGINFO, "CAEStreamParser::SyncDTS - %s stream detected (%d channels, %dHz, %dbit %s, period: %u, syncword: 0x%x, target rate: 0x%x, framesize %u)",
                 type.c_str(), m_info.m_channels, m_info.m_sampleRate,
                 bits, m_info.m_dataIsLE ? "LE" : "BE",
-                m_info.m_dtsPeriod);
+                m_info.m_dtsPeriod, hd_sync, target_rate, m_fsize);
     }
 
     return skip;
