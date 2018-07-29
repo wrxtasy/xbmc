@@ -197,6 +197,8 @@ bool CAEFactory::SupportsRaw(AEAudioFormat &format)
     return false;
   if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTSHD && !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_DTSHDPASSTHROUGH))
     return false;
+  if (format.m_streamInfo.m_type == CAEStreamInfo::STREAM_TYPE_DTSHD_XLL && !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_DTSHDPASSTHROUGH))
+    return false;
 
   if(AE)
     return AE->SupportsRaw(format);
