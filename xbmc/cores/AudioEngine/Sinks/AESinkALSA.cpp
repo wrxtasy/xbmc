@@ -590,6 +590,9 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
       device = "@:CARD=AMLM8AUDIO,DEV=0";
     }
 
+    else if (device.find("M8AUDIO") != std::string::npos)
+        device = "@:CARD=AMLM8AUDIO,DEV=0";
+
     aml_set_audio_passthrough(m_passthrough);
     SysfsUtils::SetInt("/sys/class/audiodsp/digital_codec", aml_digital_codec);
     CLog::Log(LOGINFO, "CAESinkALSA::Initialize - set digital_codec %d", aml_digital_codec);
