@@ -1229,7 +1229,7 @@ int pre_header_feeding(am_private_t *para, am_packet_t *pkt)
                 || (CODEC_TAG_VC_1 == para->video_codec_tag)
                 || (CODEC_TAG_WMVA == para->video_codec_tag)) {
             CLog::Log(LOGDEBUG, "CODEC_TAG_WVC1 == para->video_codec_tag");
-            ret = wvc1_write_header(para, pkt);
+            ret = wmv3_write_header(para, pkt);
             if (ret != PLAYER_SUCCESS) {
                 return ret;
             }
