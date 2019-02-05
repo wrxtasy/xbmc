@@ -96,9 +96,6 @@ public:
   static const std::string SETTING_VIDEOPLAYER_RENDERMETHOD;
   static const std::string SETTING_VIDEOPLAYER_HQSCALERS;
   static const std::string SETTING_VIDEOPLAYER_USEAMCODEC;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG2;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECMPEG4;
-  static const std::string SETTING_VIDEOPLAYER_USEAMCODECH264;
   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODEC;
   static const std::string SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE;
   static const std::string SETTING_VIDEOPLAYER_USEVDPAU;
@@ -112,6 +109,9 @@ public:
   static const std::string SETTING_VIDEOPLAYER_USEMMAL;
   static const std::string SETTING_VIDEOPLAYER_USEPRIMEDECODER;
   static const std::string SETTING_VIDEOPLAYER_USESTAGEFRIGHT;
+  static const std::string SETTING_VIDEOPLAYER_ACCELMPEG2;
+  static const std::string SETTING_VIDEOPLAYER_ACCELMPEG4;
+  static const std::string SETTING_VIDEOPLAYER_ACCELH264;
   static const std::string SETTING_VIDEOPLAYER_LIMITGUIUPDATE;
   static const std::string SETTING_VIDEOPLAYER_SUPPORTMVC;
   static const std::string SETTING_MYVIDEOS_SELECTACTION;

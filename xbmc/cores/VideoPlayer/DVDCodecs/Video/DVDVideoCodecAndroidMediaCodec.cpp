@@ -432,7 +432,11 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
 
   switch(m_hints.codec)
   {
+    case AV_CODEC_ID_MPEG1VIDEO:
     case AV_CODEC_ID_MPEG2VIDEO:
+      (if (m_hints.width <= CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOPLAYER_ACCELMPEG2))
+        goto FAIL;
+
       m_mime = "video/mpeg2";
       m_mpeg2_sequence = new mpeg2_sequence;
       m_mpeg2_sequence->width  = m_hints.width;
@@ -443,7 +447,12 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
       m_useDTSforPTS = true;
       m_formatname = "amc-mpeg2";
       break;
+    case AV_CODEC_ID_MSMPEG4V2:
+    case AV_CODEC_ID_MSMPEG4V3:
     case AV_CODEC_ID_MPEG4:
+      if (m_hints.width <= CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOPLAYER_ACCELMPEG4))
+        goto FAIL;
+
       m_mime = "video/mp4v-es";
       m_formatname = "amc-mpeg4";
       m_useDTSforPTS = true;
@@ -487,6 +496,9 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
     case AV_CODEC_ID_AVS:
     case AV_CODEC_ID_CAVS:
     case AV_CODEC_ID_H264:
+      if (m_hints.width <= CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOPLAYER_ACCELH264))
+        goto FAIL;
+
       switch(hints.profile)
       {
         case FF_PROFILE_H264_HIGH_10:
